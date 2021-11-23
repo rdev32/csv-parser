@@ -2,86 +2,90 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <iomanip>
+#include <map>
+#include <algorithm>
 
-std::vector<std::string> getFileProperties(const std::string& csvFile)
+auto readLine(const std::string &line)
 {
-    std::ifstream content{ csvFile };
-    std::vector <std::string> properties;
-
-    // The first line in the file has the properties of each column
-    std::string columnNames{};
-    // Read the first line of the CSV file
-    std::getline(content, columnNames);
-    // Removes all spaces from the line
-    columnNames.erase(
-        std::remove_if(columnNames.begin(), columnNames.end(), std::isspace),
-        columnNames.end());
-
-    // Removes all commas and adds the rest to the properties array
+    std::vector<std::string> lineContent{};
+    
     std::string word{};
-    for (auto& letter : columnNames) {
+    for (auto &letter : line) {
         if (letter == ',') {
-            properties.push_back(word);
+            lineContent.push_back(word);
             word = "";
             continue;
         }
         word += letter;
     }
-    properties.push_back(word);
-    return properties;
+    lineContent.push_back(word);
+
+    return lineContent;
 }
 
-// CSV PARSER
-int parseCSVFile(const std::string& filename)
+void removeSpaces(std::string &line)
 {
-    std::ifstream content{ filename };
+    line.erase(
+        std::remove_if(
+            line.begin(), 
+            line.end(), 
+            [](unsigned char c) {
+                return std::isspace(c);
+            }), 
+        line.end());
+}
 
-    if (!content) {
-        std::cerr << "File not found." << std::endl;
-        return 1;
-    }
+auto headers(std::ifstream &file) 
+{ 
+    std::string attributes{};
+    std::getline(file, attributes);
 
-    std::vector<std::string> properties = getFileProperties(filename);
-    bool flag{};
-    
-    // print contents on a fancy way
-    std::cout << "=======================" << std::endl;
+    removeSpaces(attributes);
+    return readLine(attributes);
+}
 
-    while (content) {
-        std::vector<std::string> lineContents;
+auto contents(std::ifstream &file) 
+{
+    std::map<std::string, std::string> content;
+    auto headersDone { true };
+
+    while(file) 
+    {    
         std::string line{};
-        std::getline(content, line);
+        std::getline(file, line);
+        removeSpaces(line);
 
-        // flag for skipping the first line
-        if (!flag) { flag = !flag; continue; }
-        // disables to count the last empty line
-        if (line.empty()) continue;
-        // we add the words to an array because we need them for displaying
-        
-        std::string word{};
-        for (auto& letter : line) {
-            if (letter == ',') {
-                lineContents.push_back(word);
-                word = "";
-                continue;
-            }
-            word += letter;
+        if (headersDone) { 
+            std::make_pair(readLine(line), );
+            headersDone = false; 
+            continue; 
         }
-        lineContents.push_back(word);
 
-        auto prop = properties.begin();
-        for (auto& value : lineContents) {
-            std::cout << *prop++ << ':' << value << std::endl;
-        }
-        std::cout << "=======================" << std::endl;
-
+        content.push_back(readLine(line));
     }
-    return 0;
+
+    return content;
 }
 
 int main(int argc, char* argv[])
 {
-    parseCSVFile("data.csv");
+    std::ifstream file{ std::string(argv[argc -1]) };
+    
+    if (!file) { 
+        std::cerr << "File not found.\n";
+        return 1;
+    }
+
+    auto head = headers(file);
+    auto content = contents(file);
+
+    for (auto &attribute : head) {
+        std::cout << attribute << " : ";
+        for (auto &value : content) {
+            
+        }
+        std::cout << std::endl;
+    }
+
     return 0;
 }
